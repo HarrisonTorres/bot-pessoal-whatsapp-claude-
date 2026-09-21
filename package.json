@@ -1,0 +1,19 @@
+{
+  "name": "wa-claude",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning bridge/src/index.js",
+    "test": "node --disable-warning=ExperimentalWarning --test \"bridge/test/**/*.test.js\"",
+    "test:live": "node --disable-warning=ExperimentalWarning --test \"bridge/test/live/*.live.js\""
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "pino": "^9.14.0",
+    "qrcode-terminal": "^0.12.0",
+    "sharp": "^0.35.4"
+  }
+}
