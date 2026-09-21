@@ -1,0 +1,19 @@
+# Copie este arquivo para config.yaml (que fica fora do git).
+# Voce pode editar a mao ou pedir no grupo, por exemplo:
+#   "muda a regra pra 60/30/10"
+# O agente valida que a soma da regra e 100 e reescreve so os numeros,
+# preservando estes comentarios.
+
+# Regra de orcamento: % da renda mensal por bucket. Precisa somar 100.
+# E uma META, nao uma obrigacao: no comeco e normal nao bater.
+regra:
+  fixo: 50          # gastos fixos (teto)
+  variavel: 30      # gastos variaveis (teto)
+  investimento: 20  # investimentos nao obrigatorios (MINIMO a atingir)
+
+# Avisa quando um teto (bucket ou limite de categoria) chegar a este % de uso.
+alerta_percentual: 80
+
+# Um gasto e "atipico" quando seu valor for >= este multiplo da media dos
+# gastos anteriores da categoria (exige pelo menos 5 gastos anteriores).
+gasto_atipico_multiplo: 3

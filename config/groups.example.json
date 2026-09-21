@@ -1,0 +1,8 @@
+{
+  "_comentario": "Copie para groups.json e troque pelos IDs reais dos grupos. O ID aparece nos logs da ponte quando voce manda uma mensagem no grupo. Grupo fora deste arquivo e ignorado.",
+  "grupos": {
+    "120363000000000000@g.us": {
+      "agente": "financas"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+# ============================================================
+# Segredos e dados pessoais: NUNCA versionar.
+# O repositorio traz apenas arquivos *.example com valores ficticios.
+# ============================================================
+
+# Variaveis de ambiente (numero do dono, caminhos, etc.)
+.env
+.env.*
+!.env.example
+
+# Estado local em tempo de execucao: sessao do WhatsApp (data/auth),
+# bancos SQLite, midia baixada, outbox de imagens e logs
+data/
+
+# Configuracao real com IDs de grupos e preferencias pessoais
+config/groups.json
+agents/*/config.yaml
+
+# Bancos e credenciais soltos, caso apareçam fora de data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+auth_info*/
+creds.json
+*.session
+
+# Logs
+*.log
+logs/
+
+# Dependencias e artefatos de build
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Modelos de transcricao baixados localmente
+models/
+
+# Configuracao local do Claude Code
+.claude/settings.local.json
+
+# Sistema e editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
