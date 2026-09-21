@@ -13,7 +13,7 @@
 - Windows 11, Node 24 em ESM (`"type": "module"`), Python 3.12. Todos os comandos rodam em `C:\Users\Harri\wa-claude` no PowerShell, salvo indicação.
 - Sem custo adicional e tudo na máquina local: nada de chave de API, nada de serviço pago.
 - **Nunca usar `--bare`** no `claude -p` (desativa o login da assinatura e exige chave de API).
-- Chamada do agente: `claude -p --output-format json --model <agent.model> --max-turns <agent.maxTurns> --tools <agent.tools> --allowedTools <agent.allowedTools> --permission-mode dontAsk --disable-slash-commands [--resume <session_id>] [--add-dir data/media/<grupo>]`, com `cwd` = pasta do agente e o prompt entregue por stdin.
+- Chamada do agente: `claude -p --output-format json --model <agent.model> --max-turns <agent.maxTurns> --tools <agent.tools> --allowedTools <agent.allowedTools> --permission-mode dontAsk --disable-slash-commands --restricted --strict-mcp-config --append-system-prompt-file <pasta do agente>/CLAUDE.md [--resume <session_id>] [--add-dir data/media/<grupo>]`, com `cwd` = pasta do agente e o prompt entregue por stdin. O spike (Task 0) mostrou que `--restricted` corta a entrada de 94 mil para 5 mil tokens, confina as ferramentas de arquivo às pastas do agente e da mídia, mas não carrega o `CLAUDE.md`, por isso ele entra por `--append-system-prompt-file`.
 - Ambiente de cada chamada: `BOT_GROUP_ID`, `BOT_DATA_DIR` e `BOT_OUTBOX_DIR` (= `data/outbox/<grupo>`).
 - Só o `OWNER_JID` (e o opcional `OWNER_LID`) e os grupos de `config/groups.json` são processados; o resto é ignorado em silêncio (só log local). Mensagens `fromMe` são ignoradas (evita loop).
 - Uma chamada do Claude por vez no total. Toda mensagem entra na `inbox` (`pendente | feito | falhou`) antes de ser processada; `message_id` é único.
@@ -70,6 +70,8 @@ Manual e interativo: gasta um pouco de cota e exige um login no navegador. Resol
 
 **Interfaces:**
 - Produces: a decisão sobre `CLAUDE_CONFIG_DIR` (vai ou não para o `.env`), a confirmação de que o prompt por stdin funciona e o formato real do JSON.
+
+> **Executado em 2026-09-21, com desvio.** O baseline custou 94.366 tokens e 33 s por mensagem, então o isolamento é obrigatório. Em vez do `CLAUDE_CONFIG_DIR` dedicado (que exigiria outro login), o `claude --help` revelou `--restricted`, que isola sem novo login e ainda confina os arquivos às pastas liberadas; ele não carrega o `CLAUDE.md`, que passa a entrar por `--append-system-prompt-file`. Os passos 4 a 6 abaixo ficaram substituídos por esse resultado; veja `docs/superpowers/notes/2026-09-21-spike-claude-p.md`. Os Tasks 5 e 13 já refletem a mudança.
 
 - [ ] **Step 1: Preparar uma pasta descartável**
 
@@ -428,7 +430,7 @@ Acrescente ao final de `.env.example`:
 # OWNER_LID=000000000000000@lid
 # Pasta da sessão do WhatsApp fora do repositório (recomendado se o teste de segurança falhar)
 # WA_AUTH_DIR=C:\Users\SEU_USUARIO\AppData\Local\wa-claude\auth
-# Config dedicada do Claude Code para o bot (resultado do spike)
+# Config dedicada do Claude Code para o bot (opcional: o --restricted do spike já isola o bot)
 # CLAUDE_CONFIG_DIR=C:\Users\SEU_USUARIO\wa-claude\data\claude-config
 # Caminho do executável do claude, se não estiver no PATH
 # CLAUDE_BIN=claude
@@ -870,6 +872,7 @@ export function fakeSpawn({ stdout = '', stderr = '', code = 0, hang = false } =
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import { buildClaudeArgs, parseClaudeOutput, runClaude, ClaudeError } from '../src/runner.js';
 import { fakeSpawn } from './helpers/fake-spawn.js';
 
@@ -884,12 +887,15 @@ test('buildClaudeArgs monta a chamada restrita e nunca usa --bare', () => {
     '-p', '--output-format', 'json', '--model', 'haiku', '--max-turns', '4',
     '--tools', 'Read,Bash', '--allowedTools', 'Read,Bash(finance *)',
     '--permission-mode', 'dontAsk', '--disable-slash-commands',
+    '--restricted', '--strict-mcp-config',
+    '--append-system-prompt-file', path.join('C:/agents/eco', 'CLAUDE.md'),
     '--resume', 'abc', '--add-dir', 'D:/m',
   ]);
   const semSessao = buildClaudeArgs({ agent });
   assert.ok(!semSessao.includes('--resume'));
   assert.ok(!semSessao.includes('--add-dir'));
   assert.ok(!semSessao.includes('--bare'));
+  assert.ok(semSessao.includes('--restricted'));
 });
 
 test('parseClaudeOutput entende a saída real capturada no spike', () => {
@@ -946,6 +952,7 @@ Expected: FAIL com `Cannot find module '../src/runner.js'`.
 `bridge/src/runner.js`:
 
 ```js
+import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 export class ClaudeError extends Error {
@@ -969,6 +976,8 @@ export function buildClaudeArgs({ agent, sessionId, addDirs = [] }) {
     '--allowedTools', agent.allowedTools.join(','),
     '--permission-mode', 'dontAsk',
     '--disable-slash-commands',
+    '--restricted', '--strict-mcp-config',
+    '--append-system-prompt-file', path.join(agent.dir, 'CLAUDE.md'),
   ];
   if (sessionId) args.push('--resume', sessionId);
   if (addDirs.length) args.push('--add-dir', ...addDirs);

@@ -51,16 +51,18 @@ Componentes:
 Chamada ao Claude (cwd = pasta do agente):
 
 ```
-claude -p "<prompt>" [--resume <session_id>] --output-format json
+<prompt por stdin> | claude -p --output-format json [--resume <session_id>]
   --model <agent.model> --max-turns <agent.maxTurns>
-  --tools "Read,Bash" --allowedTools "Read" "Bash(finance *)"
+  --tools "Read,Bash" --allowedTools "Read,Bash(finance *)"
   --permission-mode dontAsk --disable-slash-commands
+  --restricted --strict-mcp-config
+  --append-system-prompt-file agents/<nome>/CLAUDE.md
   --add-dir data/media/<grupo>
 ```
 
 O `session_id` devolvido no JSON é guardado por grupo e reusado com `--resume`, então cada grupo tem conversa contínua e isolada. A sessão é reiniciada na virada do mês ou após `sessionResetMessages` mensagens (padrão 100), sem perda de informação, porque o histórico está no banco e as regras estão no `CLAUDE.md`. O bot define `BOT_GROUP_ID`, `BOT_DATA_DIR` e `BOT_OUTBOX_DIR` no ambiente de cada chamada, de modo que o agente só escreve na `outbox/` do próprio grupo. O atalho para chamar `finance` no Windows é definido no plano de implementação.
 
-**Isolamento do `~/.claude` do usuário.** Sem `--bare`, o `claude -p` carrega hooks, plugins e servidores MCP globais, o que custa latência e tokens a cada mensagem. `--tools` e `--disable-slash-commands` já limitam o que o agente enxerga; o plano de infra começa com um teste medindo esse custo e, se for alto, roda o bot com um `CLAUDE_CONFIG_DIR` dedicado, autenticado uma vez na mesma conta Pro.
+**Isolamento do `~/.claude` do usuário (medido no spike de 2026-09-21).** Sem isolamento, o `claude -p` carrega hooks, plugins e conectores globais: 94.366 tokens de entrada e 33 s para um "pong". Com `--restricted --strict-mcp-config` caiu para 5.271 tokens e 12 s, sem precisar de outro login (o `--bare` continua proibido, porque desliga o login da assinatura). O `--restricted` também confina as ferramentas de arquivo à pasta do agente e ao `--add-dir`, mas não carrega o `CLAUDE.md`, por isso ele entra por `--append-system-prompt-file`. Um `CLAUDE_CONFIG_DIR` dedicado ficou desnecessário. Detalhes em `docs/superpowers/notes/2026-09-21-spike-claude-p.md`.
 
 Estado do bot em SQLite, separado dos dados do agente:
 
