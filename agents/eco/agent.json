@@ -1,0 +1,7 @@
+{
+  "model": "haiku",
+  "maxTurns": 4,
+  "tools": ["Read"],
+  "allowedTools": ["Read"],
+  "sessionResetMessages": 100
+}
