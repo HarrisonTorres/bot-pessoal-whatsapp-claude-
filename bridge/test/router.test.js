@@ -49,3 +49,11 @@ test('resolveRoute devolve null para grupo não cadastrado', () => {
   assert.equal(r.groupJid, '1203@g.us');
   assert.equal(r.agent.name, 'eco');
 });
+
+test('loadGroups aceita arquivo com BOM e aponta o arquivo quando o JSON é inválido', () => {
+  const f = path.join(tmp(), 'groups.json');
+  fs.writeFileSync(f, `﻿${JSON.stringify({ grupos: { '1203@g.us': { agente: 'eco' } } })}`);
+  assert.deepEqual(loadGroups(f), { '1203@g.us': { agente: 'eco' } });
+  fs.writeFileSync(f, '{ "grupos": {Finanças} }');
+  assert.throws(() => loadGroups(f), (e) => e.message.includes('não é um JSON válido') && e.message.includes(f));
+});

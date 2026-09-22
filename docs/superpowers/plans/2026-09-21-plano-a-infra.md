@@ -2688,7 +2688,7 @@ Expected: um toast do Windows aparece e `data\logs\ALERTA.txt` ganha uma linha. 
 
 ```powershell
 Copy-Item .env.example .env
-Set-Content config\groups.json -Value '{ "grupos": {} }' -Encoding utf8
+[System.IO.File]::WriteAllText("$PWD\config\groups.json", '{ "grupos": {} }')   # sem BOM (o Set-Content do PowerShell 5.1 grava BOM e quebra o JSON)
 ```
 
 Edite `.env` e preencha `OWNER_JID` com o seu número **principal** (formato `55DDDNUMERO@s.whatsapp.net`). Depois:
