@@ -8,7 +8,11 @@ import { createFakeWa } from './helpers/fake-wa.js';
 import { waitUntil } from './helpers/wait.js';
 
 const OWNER = '5511999990000@s.whatsapp.net';
-const groups = { 'g1@g.us': { agente: 'eco' }, 'g2@g.us': { agente: 'outro' } };
+const groups = {
+  'g1@g.us': { agente: 'eco' },
+  'g2@g.us': { agente: 'outro' },
+  'g3@g.us': { agente: 'eco', somenteDono: true },
+};
 const silent = { info() {}, warn() {}, error() {} };
 
 function newDataDir() {
@@ -56,10 +60,20 @@ test('cada grupo é roteado para o seu agente e a resposta volta ao mesmo grupo'
   assert.deepEqual(textos(wa).map((s) => [s.jid, s.text]), [['g1@g.us', 'resp eco'], ['g2@g.us', 'resp outro']]);
 });
 
-test('ignora outro remetente, mensagem própria (sem loop) e grupo não cadastrado', async () => {
+test('qualquer membro de um grupo cadastrado é atendido, não só o dono', async () => {
   const { app, wa, calls } = makeApp(newDataDir());
   app.worker.start();
-  await app.ingest.onMessage(msg('M1', 'g1@g.us', 'x', { participant: '5511888880000@s.whatsapp.net' }));
+  await app.ingest.onMessage(msg('M1', 'g1@g.us', 'oi da amiga', { participant: '5511888880000@s.whatsapp.net' }));
+  await waitUntil(() => textos(wa).length === 1);
+  await app.worker.stop();
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].prompt, /oi da amiga/);
+});
+
+test('ignora outro remetente (grupo somenteDono), mensagem própria (sem loop) e grupo não cadastrado', async () => {
+  const { app, wa, calls } = makeApp(newDataDir());
+  app.worker.start();
+  await app.ingest.onMessage(msg('M1', 'g3@g.us', 'x', { participant: '5511888880000@s.whatsapp.net' }));
   await app.ingest.onMessage(msg('M2', 'g1@g.us', 'x', { fromMe: true }));
   await app.ingest.onMessage(msg('M3', 'g9@g.us', 'x'));
   await new Promise((r) => setTimeout(r, 100));

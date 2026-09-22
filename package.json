@@ -7,7 +7,7 @@
   },
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning bridge/src/index.js",
-    "test": "node --disable-warning=ExperimentalWarning --test \"bridge/test/**/*.test.js\"",
+    "test": "node --disable-warning=ExperimentalWarning --test --test-force-exit --test-timeout=60000 \"bridge/test/**/*.test.js\"",
     "test:live": "node --disable-warning=ExperimentalWarning --test \"bridge/test/live/*.live.js\""
   },
   "dependencies": {

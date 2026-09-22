@@ -8,6 +8,7 @@ import { createIngest, extFor } from '../src/ingest.js';
 import { createFakeWa } from './helpers/fake-wa.js';
 
 const groups = { '1203@g.us': { agente: 'eco' } };
+const restrito = { '1203@g.us': { agente: 'eco', somenteDono: true } };
 const ownerJids = ['5511999990000@s.whatsapp.net'];
 const msg = (id, message, key = {}) => ({
   key: { remoteJid: '1203@g.us', id, fromMe: false, participant: '5511999990000:7@s.whatsapp.net', ...key },
@@ -15,7 +16,7 @@ const msg = (id, message, key = {}) => ({
   messageTimestamp: 1_700_000_000,
 });
 
-function setup() {
+function setup(gruposCadastrados = groups) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-'));
   const inbox = openBridgeDb(':memory:');
   const wa = createFakeWa();
@@ -26,7 +27,7 @@ function setup() {
   const log = { info: (o, m) => logs.push({ o, m }), warn() {}, error() {} };
   let notificacoes = 0;
   const worker = { notify() { notificacoes += 1; } };
-  const ingest = createIngest({ inbox, wa, worker, groups, ownerJids, dataDir, now: () => 42, log });
+  const ingest = createIngest({ inbox, wa, worker, groups: gruposCadastrados, ownerJids, dataDir, now: () => 42, log });
   return { dataDir, inbox, wa, logs, ingest, get downloads() { return downloads; }, get notificacoes() { return notificacoes; } };
 }
 
@@ -38,8 +39,8 @@ test('extFor escolhe a extensão pelo mime ou pelo nome do arquivo', () => {
   assert.equal(extFor({ mime: 'x/y' }), '.bin');
 });
 
-test('ignora mensagem própria, de outro remetente e tipo não suportado', async () => {
-  const t = setup();
+test('ignora mensagem própria, de outro remetente (grupo somenteDono) e tipo não suportado', async () => {
+  const t = setup(restrito);
   await t.ingest.onMessage(msg('M1', { conversation: 'oi' }, { fromMe: true }));
   await t.ingest.onMessage(msg('M2', { conversation: 'oi' }, { participant: '5511888880000@s.whatsapp.net' }));
   await t.ingest.onMessage(msg('M3', { protocolMessage: {} }));

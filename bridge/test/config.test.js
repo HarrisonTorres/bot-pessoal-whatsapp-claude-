@@ -25,9 +25,9 @@ test('loadConfig lê dono, LID opcional e caminhos padrão', () => {
   assert.equal(cfg.whisperModel, 'small');
 });
 
-test('loadConfig respeita WA_AUTH_DIR e exige OWNER_JID', () => {
+test('loadConfig respeita WA_AUTH_DIR e aceita OWNER_JID ausente (o dono só vale em grupos somenteDono)', () => {
   const root = path.resolve('C:/tmp/proj');
   const cfg = loadConfig({ env: { OWNER_JID: '55@s.whatsapp.net', WA_AUTH_DIR: 'C:/auth-fora' }, root });
   assert.equal(cfg.authDir, path.resolve('C:/auth-fora'));
-  assert.throws(() => loadConfig({ env: {}, root }), /OWNER_JID/);
+  assert.deepEqual(loadConfig({ env: {}, root }).ownerJids, []);
 });

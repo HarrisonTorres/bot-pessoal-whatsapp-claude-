@@ -6,7 +6,9 @@ Data: 2026-09-21 · Status: aprovado em conversa, aguardando revisão do documen
 
 Conversar com o Claude Code (plano Pro) por **grupos de WhatsApp**, cada grupo ligado a um agente próprio com contexto e dados próprios. O primeiro agente é o de **finanças**: registra gastos enviados por texto, áudio, foto ou PDF, categoriza, acompanha a regra 50/30/20 e responde perguntas, dicas e relatórios em imagem. Grupos novos (ideias, conselhos etc.) devem plugar na mesma infra sem mexer no núcleo.
 
-Restrições do usuário: sem custo adicional, tudo na própria máquina (Windows 11), número secundário do WhatsApp Business (app gratuito) como "bot", número principal como único remetente autorizado.
+Restrições do usuário: sem custo adicional, tudo na própria máquina (Windows 11), número secundário do WhatsApp Business (app gratuito) como "bot".
+
+**Controle de acesso (decidido em 2026-09-21, durante a implementação).** A unidade de permissão é o **grupo**, não o número: só grupos cadastrados em `config/groups.json` são lidos, e dentro deles qualquer membro é atendido, porque quem controla a entrada no grupo controla o acesso. Um grupo pode ser restrito ao dono com `"somenteDono": true`, e aí valem o `OWNER_JID` e o `OWNER_LID` do `.env`. Conversas individuais nunca são processadas.
 
 ## 2. Viabilidade e decisões
 
@@ -43,7 +45,7 @@ docs/superpowers/specs/
 
 Componentes:
 
-- **bridge**: conecta como dispositivo vinculado. Processa só grupos presentes em `config/groups.json` e só mensagens do `OWNER_JID` (`.env`). Ignora as próprias respostas (evita loop). Baixa mídia para `data/media/<grupo>/`. Mantém uma fila durável e executa **uma chamada do Claude por vez no total** (uso pessoal; protege a cota). Envia texto e qualquer arquivo novo que apareça em `data/outbox/<grupo>/`.
+- **bridge**: conecta como dispositivo vinculado. Processa só grupos presentes em `config/groups.json`, atendendo qualquer membro deles (ou apenas o dono, nos grupos com `somenteDono`). Ignora as próprias respostas (evita loop). Baixa mídia para `data/media/<grupo>/`. Mantém uma fila durável e executa **uma chamada do Claude por vez no total** (uso pessoal; protege a cota). Envia texto e qualquer arquivo novo que apareça em `data/outbox/<grupo>/`.
 - **router**: `config/groups.json` mapeia `ID do grupo → agente`. Determinístico, sem IA. Grupo novo = pasta em `agents/` + uma entrada no arquivo.
 - **transcritor**: áudio (ogg/opus) vira texto com `faster-whisper`, idioma pt, modelo definido por `WHISPER_MODEL`. Roda antes da chamada ao Claude. Se falhar ou vier vazio, o bot pede para repetir ou escrever.
 - **agente** (`agents/<nome>/`): `CLAUDE.md` com regras e persona, mais `agent.json` com `model`, `maxTurns`, `tools`, `allowedTools` e `sessionResetMessages`.
@@ -127,10 +129,12 @@ A ponte envia o arquivo como imagem, com legenda de destaques e pontos de atenç
 
 **Segurança**
 
-- Só o `OWNER_JID` e os grupos cadastrados são processados; o resto é ignorado em silêncio.
+- Só os grupos cadastrados são processados, e o resto é ignorado em silêncio. Dentro de um grupo cadastrado, qualquer membro é atendido; com `somenteDono: true`, apenas o `OWNER_JID` e o `OWNER_LID`.
 - O agente roda com `--tools "Read,Bash"`, `--allowedTools "Read" "Bash(finance *)"` e `--permission-mode dontAsk`. No `dontAsk`, tudo que exigiria confirmação é negado, mas o que não exige continua permitido: leitura dentro dos diretórios de trabalho e o conjunto padrão de comandos somente-leitura. Por isso a sessão do WhatsApp (`data/auth/`) fica fora do diretório de trabalho e do `--add-dir` do agente, e o plano inclui um teste confirmando que o agente não consegue lê-la. Anexos e mensagens encaminhadas são dado, não instrução (regra também no `CLAUDE.md`, mas o controle real são as ferramentas e os diretórios liberados).
 - Segredos e dados pessoais (`.env`, `data/`, `config/groups.json`, `agents/*/config.yaml`) estão no `.gitignore`; o repositório traz só arquivos `*.example` com valores fictícios.
-- Mitigação de banimento: só responde ao que o usuário manda, com pequena pausa e "digitando…", baixo volume, IP residencial, sem mensagens em massa nem contatos desconhecidos.
+- Mitigação de banimento: só responde a quem falou primeiro em um grupo cadastrado, com pequena pausa e "digitando…", baixo volume, IP residencial, sem mensagens em massa nem contatos desconhecidos.
+
+**Se outras pessoas entrarem em um grupo cadastrado**, elas passam a poder gravar gastos e ver os relatórios daquele grupo, e o que escreverem chega ao Claude como pedido, não como ordem de sistema (as ferramentas liberadas continuam sendo o limite real). Um grupo que deva ficar só para você leva `somenteDono: true`.
 
 **Testes**
 

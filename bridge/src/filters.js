@@ -35,14 +35,21 @@ export function extractContent(message) {
   return { kind: 'other', text: '' };
 }
 
-export function decide(msg, { ownerJids, groups }) {
+// Regra de acesso: só grupos cadastrados são lidos. Por padrão qualquer membro é atendido (quem controla
+// o acesso é quem controla a entrada no grupo). Com `somenteDono: true` no cadastro do grupo, só o dono.
+export function decide(msg, { ownerJids = [], groups }) {
   const key = msg.key ?? {};
   if (key.fromMe) return { ok: false, reason: 'own-message' };
   const groupJid = key.remoteJid;
   if (!groupJid?.endsWith('@g.us')) return { ok: false, reason: 'not-group' };
-  if (!groups[groupJid]) return { ok: false, reason: 'group-not-registered', groupJid };
+  const entry = groups[groupJid];
+  if (!entry) return { ok: false, reason: 'group-not-registered', groupJid };
   const candidates = [key.participant, key.participantAlt].filter(Boolean).map(normalizeJid);
-  const senderJid = candidates.find((c) => ownerJids.includes(c));
-  if (!senderJid) return { ok: false, reason: 'sender-not-owner', groupJid, candidates };
+  if (entry.somenteDono) {
+    const senderJid = candidates.find((c) => ownerJids.includes(c));
+    if (!senderJid) return { ok: false, reason: 'sender-not-owner', groupJid, candidates };
+    return { ok: true, groupJid, senderJid };
+  }
+  const senderJid = candidates.find((c) => c.endsWith('@s.whatsapp.net')) ?? candidates[0] ?? '';
   return { ok: true, groupJid, senderJid };
 }

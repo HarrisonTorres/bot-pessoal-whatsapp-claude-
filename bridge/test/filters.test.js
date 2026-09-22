@@ -4,6 +4,7 @@ import { extractContent, decide } from '../src/filters.js';
 
 const groups = { '1203@g.us': { agente: 'eco' } };
 const ownerJids = ['5511999990000@s.whatsapp.net', '999@lid'];
+const restrito = { '1203@g.us': { agente: 'eco', somenteDono: true } };
 const key = (extra = {}) => ({
   remoteJid: '1203@g.us', id: 'M1', fromMe: false, participant: '5511999990000:7@s.whatsapp.net', ...extra,
 });
@@ -37,8 +38,17 @@ test('decide ignora mensagens próprias, fora de grupo e de grupo não cadastrad
   assert.equal(r.groupJid, '777@g.us');
 });
 
-test('decide só aceita o dono, por telefone, LID ou par LID/telefone', () => {
-  const ctx = { ownerJids, groups };
+test('por padrão qualquer membro de um grupo cadastrado é aceito, mesmo sem dono configurado', () => {
+  const ctx = { ownerJids: [], groups };
+  const r = decide({ key: key({ participant: '5511888880000:2@s.whatsapp.net' }) }, ctx);
+  assert.deepEqual(r, { ok: true, groupJid: '1203@g.us', senderJid: '5511888880000@s.whatsapp.net' });
+  const par = decide({ key: key({ participant: '111@lid', participantAlt: '5511777770000@s.whatsapp.net' }) }, ctx);
+  assert.equal(par.senderJid, '5511777770000@s.whatsapp.net'); // prefere o telefone ao LID
+  assert.equal(decide({ key: key({ participant: '111@lid' }) }, ctx).senderJid, '111@lid');
+});
+
+test('em grupo com somenteDono, só o dono é aceito, por telefone, LID ou par LID/telefone', () => {
+  const ctx = { ownerJids, groups: restrito };
   const ok = decide({ key: key() }, ctx);
   assert.deepEqual(ok, { ok: true, groupJid: '1203@g.us', senderJid: '5511999990000@s.whatsapp.net' });
   assert.equal(decide({ key: key({ participant: '999:3@lid' }) }, ctx).ok, true);

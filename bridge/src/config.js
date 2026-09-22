@@ -4,8 +4,7 @@ import { normalizeJid } from './jid.js';
 export const ROOT = path.resolve(import.meta.dirname, '..', '..');
 
 export function loadConfig({ env = process.env, root = ROOT } = {}) {
-  const ownerJids = [env.OWNER_JID, env.OWNER_LID].filter(Boolean).map(normalizeJid);
-  if (ownerJids.length === 0) throw new Error('OWNER_JID não definido no .env');
+  const ownerJids = [env.OWNER_JID, env.OWNER_LID].filter(Boolean).map(normalizeJid); // só vale em grupos somenteDono
   const dataDir = path.resolve(root, env.BOT_DATA_DIR || './data');
   return {
     root,

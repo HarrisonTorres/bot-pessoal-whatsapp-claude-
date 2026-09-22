@@ -1,8 +1,13 @@
 {
-  "_comentario": "Copie para groups.json e troque pelos IDs reais dos grupos. O ID aparece nos logs da ponte quando voce manda uma mensagem no grupo. Grupo fora deste arquivo e ignorado.",
+  "_comentario": "Copie para groups.json e troque pelos IDs reais dos grupos. O ID aparece nos logs da ponte quando voce manda uma mensagem no grupo. Grupo fora deste arquivo e ignorado por completo.",
+  "_acesso": "Por padrao qualquer membro do grupo cadastrado e atendido: quem controla o acesso e quem controla a entrada no grupo. Para restringir um grupo so ao dono (OWNER_JID/OWNER_LID do .env), acrescente \"somenteDono\": true no cadastro dele.",
   "grupos": {
     "120363000000000000@g.us": {
       "agente": "financas"
+    },
+    "120363000000000001@g.us": {
+      "agente": "financas",
+      "somenteDono": true
     }
   }
 }
