@@ -10,7 +10,10 @@ export class ClaudeError extends Error {
   }
 }
 
-const QUOTA_RE = /(usage limit|rate limit|limit reached|quota|too many requests|overloaded|\b429\b)/i;
+// Corta ~3 s por chamada (medido em 2026-09-21): sem atualização automática nem tráfego não essencial.
+const QUIET_ENV = { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1', DISABLE_AUTOUPDATER: '1' };
+
+const QUOTA_RE =/(usage limit|rate limit|limit reached|quota|too many requests|overloaded|\b429\b)/i;
 const classify = (text) => (QUOTA_RE.test(text) ? 'quota' : 'error');
 
 export function buildClaudeArgs({ agent, sessionId, addDirs = [] }) {
@@ -23,7 +26,7 @@ export function buildClaudeArgs({ agent, sessionId, addDirs = [] }) {
     '--permission-mode', 'dontAsk',
     '--disable-slash-commands',
     '--restricted', '--strict-mcp-config',
-    '--append-system-prompt-file', path.join(agent.dir, 'CLAUDE.md'),
+    '--append-system-prompt-file', path.resolve(agent.dir, 'CLAUDE.md'),
   ];
   if (sessionId) args.push('--resume', sessionId);
   if (addDirs.length) args.push('--add-dir', ...addDirs);
@@ -55,7 +58,7 @@ export function runClaude({
   claudeConfigDir = null, timeoutMs = 180_000, spawnFn = spawn,
 }) {
   return new Promise((resolve, reject) => {
-    const childEnv = { ...process.env, ...env };
+    const childEnv = { ...process.env, ...QUIET_ENV, ...env };
     if (claudeConfigDir) childEnv.CLAUDE_CONFIG_DIR = claudeConfigDir;
     const child = spawnFn(bin, buildClaudeArgs({ agent, sessionId, addDirs }), {
       cwd: agent.dir, env: childEnv, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true,

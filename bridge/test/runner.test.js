@@ -27,6 +27,12 @@ test('buildClaudeArgs monta a chamada restrita e nunca usa --bare', () => {
   assert.ok(semSessao.includes('--restricted'));
 });
 
+test('buildClaudeArgs usa caminho absoluto para o CLAUDE.md mesmo com agent.dir relativo', () => {
+  const args = buildClaudeArgs({ agent: { ...agent, dir: path.join('agents', 'eco') } });
+  const file = args[args.indexOf('--append-system-prompt-file') + 1];
+  assert.equal(file, path.resolve('agents', 'eco', 'CLAUDE.md'));
+});
+
 test('parseClaudeOutput entende a saída real capturada no spike', () => {
   const raw = fs.readFileSync(new URL('./fixtures/claude-result.json', import.meta.url), 'utf8');
   const r = parseClaudeOutput(raw);
@@ -57,6 +63,8 @@ test('runClaude envia o prompt por stdin, roda na pasta do agente e repassa o am
   assert.equal(c.opts.cwd, 'C:/agents/eco');
   assert.equal(c.opts.env.BOT_GROUP_ID, 'g1@g.us');
   assert.equal(c.opts.env.CLAUDE_CONFIG_DIR, 'D:/cfg');
+  assert.equal(c.opts.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC, '1');
+  assert.equal(c.opts.env.DISABLE_AUTOUPDATER, '1');
 });
 
 test('runClaude classifica falha de cota pelo stderr', async () => {
