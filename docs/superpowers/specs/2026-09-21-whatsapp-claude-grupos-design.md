@@ -35,7 +35,7 @@ Layout do repositório (`C:\Users\Harri\wa-claude\`):
 ```
 bridge/        Node + Baileys: conexão, filtros, fila, envio de texto e imagem
 transcriber/   Python + faster-whisper (pt-BR)
-finance/       Python: CLI `finance`, esquema SQLite, relatórios (matplotlib)
+finance/       Python: servidor MCP `finance`, esquema SQLite, relatórios (matplotlib) — ver Plano B
 agents/
   financas/    agent.json, CLAUDE.md, config.example.yaml (config.yaml fica fora do git)
 config/        groups.example.json (groups.json fica fora do git)
@@ -50,17 +50,19 @@ Componentes:
 - **transcritor**: áudio (ogg/opus) vira texto com `faster-whisper`, idioma pt, modelo definido por `WHISPER_MODEL`. Roda antes da chamada ao Claude. Se falhar ou vier vazio, o bot pede para repetir ou escrever.
 - **agente** (`agents/<nome>/`): `CLAUDE.md` com regras e persona, mais `agent.json` com `model`, `maxTurns`, `tools`, `allowedTools` e `sessionResetMessages`.
 
-Chamada ao Claude (cwd = pasta do agente):
+Chamada ao Claude (cwd = pasta do agente; exemplo de um agente sem ferramentas MCP, como o `eco`):
 
 ```
 <prompt por stdin> | claude -p --output-format json [--resume <session_id>]
   --model <agent.model> --max-turns <agent.maxTurns>
-  --tools "Read,Bash" --allowedTools "Read,Bash(finance *)"
+  --tools "Read" --allowedTools "Read"
   --permission-mode dontAsk --disable-slash-commands
   --restricted --strict-mcp-config
   --append-system-prompt-file agents/<nome>/CLAUDE.md
   --add-dir data/media/<grupo>
 ```
+
+Um agente com servidor MCP (como o `financas`) acrescenta `--mcp-config '<json com a porta atual>'` e `mcp__<nome>__*` ao `--allowedTools`, sem `Bash`. Ver o [design do Plano B](2026-09-21-plano-b-agente-financas-design.md) — o `Bash(finance *)` cogitado aqui originalmente foi abandonado por deixar `&&` encadear comandos.
 
 O `session_id` devolvido no JSON é guardado por grupo e reusado com `--resume`, então cada grupo tem conversa contínua e isolada. A sessão é reiniciada na virada do mês ou após `sessionResetMessages` mensagens (padrão 100), sem perda de informação, porque o histórico está no banco e as regras estão no `CLAUDE.md`. O bot define `BOT_GROUP_ID`, `BOT_DATA_DIR` e `BOT_OUTBOX_DIR` no ambiente de cada chamada, de modo que o agente só escreve na `outbox/` do próprio grupo. O atalho para chamar `finance` no Windows é definido no plano de implementação.
 
@@ -130,7 +132,7 @@ A ponte envia o arquivo como imagem, com legenda de destaques e pontos de atenç
 **Segurança**
 
 - Só os grupos cadastrados são processados, e o resto é ignorado em silêncio. Dentro de um grupo cadastrado, qualquer membro é atendido; com `somenteDono: true`, apenas o `OWNER_JID` e o `OWNER_LID`.
-- O agente roda com `--tools "Read,Bash"`, `--allowedTools "Read" "Bash(finance *)"` e `--permission-mode dontAsk`. No `dontAsk`, tudo que exigiria confirmação é negado, mas o que não exige continua permitido: leitura dentro dos diretórios de trabalho e o conjunto padrão de comandos somente-leitura. Por isso a sessão do WhatsApp (`data/auth/`) fica fora do diretório de trabalho e do `--add-dir` do agente, e o plano inclui um teste confirmando que o agente não consegue lê-la. Anexos e mensagens encaminhadas são dado, não instrução (regra também no `CLAUDE.md`, mas o controle real são as ferramentas e os diretórios liberados).
+- O agente roda com `--tools`/`--allowedTools` restritos ao mínimo necessário (`Read`, mais `mcp__<nome>__*` quando o agente declara um servidor MCP — nenhum agente usa `Bash`) e `--permission-mode dontAsk`. No `dontAsk`, tudo que exigiria confirmação é negado, mas o que não exige continua permitido: leitura dentro dos diretórios de trabalho e o conjunto padrão de comandos somente-leitura. Por isso a sessão do WhatsApp (`data/auth/`) fica fora do diretório de trabalho e do `--add-dir` do agente, e o plano inclui um teste confirmando que o agente não consegue lê-la. Anexos e mensagens encaminhadas são dado, não instrução (regra também no `CLAUDE.md`, mas o controle real são as ferramentas e os diretórios liberados).
 - Segredos e dados pessoais (`.env`, `data/`, `config/groups.json`, `agents/*/config.yaml`) estão no `.gitignore`; o repositório traz só arquivos `*.example` com valores fictícios.
 - Mitigação de banimento: só responde a quem falou primeiro em um grupo cadastrado, com pequena pausa e "digitando…", baixo volume, IP residencial, sem mensagens em massa nem contatos desconhecidos.
 
