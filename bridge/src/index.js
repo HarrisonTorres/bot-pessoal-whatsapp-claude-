@@ -5,12 +5,25 @@ import { loadGroups, loadAgent } from './router.js';
 import { createLogger } from './log.js';
 import { createWa } from './wa.js';
 import { buildApp } from './app.js';
+import { acquireLock, LockError } from './lock.js';
 
 try {
   process.loadEnvFile(path.join(ROOT, '.env'));
 } catch { /* sem .env: usa as variáveis já definidas no ambiente */ }
 
 const config = loadConfig();
+
+let lock;
+try {
+  lock = acquireLock(config.dataDir);
+} catch (e) {
+  if (e instanceof LockError) {
+    console.error(`\n${e.message}\n`); // sem logger ainda: é rápido e evita ruído no log de outra instância
+    process.exit(1);
+  }
+  throw e;
+}
+
 const log = createLogger(config.dataDir);
 const groups = loadGroups(config.groupsFile);
 for (const g of Object.values(groups)) loadAgent(config.agentsDir, g.agente);
@@ -42,6 +55,7 @@ async function shutdown() {
   await app.worker.stop();
   wa.stop();
   app.inbox.close();
+  lock.release();
   process.exit(0);
 }
 process.on('SIGINT', shutdown);
